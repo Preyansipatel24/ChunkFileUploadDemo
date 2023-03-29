@@ -5,9 +5,12 @@ namespace ChunkFileUploadDemo.Controllers
     public class UploadChunkController : Controller
     {
         private readonly Microsoft.AspNetCore.Hosting.IHostingEnvironment _hostEnvironment;
-        public UploadChunkController(Microsoft.AspNetCore.Hosting.IHostingEnvironment hostEnvironment)
+        private readonly IHttpContextAccessor _httpContextAccessor;
+        public UploadChunkController(Microsoft.AspNetCore.Hosting.IHostingEnvironment hostEnvironment, IHttpContextAccessor httpContextAccessor)
         {
             _hostEnvironment = hostEnvironment;
+            _httpContextAccessor = httpContextAccessor;
+
         }
 
         [HttpGet]
@@ -83,7 +86,10 @@ namespace ChunkFileUploadDemo.Controllers
             if (chunkIndex == totalChunks - 1)
             {
                 // If this is the last chunk, the file is now complete
-                return Ok(filePath);
+                string reletivepath = GetRelativeRootPath();
+                var savePath = Path.Combine("/", "Uploads", file.FileName);
+                var savePath1 = Path.Combine(reletivepath, savePath);
+                return Ok(savePath);
             }
             else
             {
@@ -91,6 +97,12 @@ namespace ChunkFileUploadDemo.Controllers
                 return StatusCode(206);
                 
             }
+        }
+        public string GetRelativeRootPath()
+        {
+            //string directoryPath = "/files";
+            string relativeRootPath = _httpContextAccessor.HttpContext.Request.Scheme + "://" + _httpContextAccessor.HttpContext.Request.Host;
+            return relativeRootPath;
         }
     }
 }

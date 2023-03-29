@@ -1,11 +1,13 @@
-﻿
-
-<!-- File upload form -->
+﻿<!-- File upload form -->
 <form id="uploadForm" enctype="multipart/form-data">
     <input type="file" name="file" />
-    <button type="submit">Upload</button>
     <br />
-    <a id="uploadedFilePath" href="">Uploaded File</a>
+    <br />
+    <br />
+    <br />
+    <div id="divVideo" hidden>
+        <iframe width="642" height="361" src="" title="Uploaded Video" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+    </div>
 </form>
 
 <!-- Progress bar to show the upload progress -->
@@ -20,6 +22,7 @@
             const chunkSize = 1024 * 1024; // 1024 = 1KB // 1024 * 1024 = 1MB
             const totalChunks = Math.ceil(file.size / chunkSize); // Total No. of Chunks
             let chunkIndex = 0;
+            var token;
             // Function to send a chunk of the file to the server
             function sendChunk(chunk) {
                 const formData = new FormData();
@@ -27,6 +30,7 @@
                 formData.append('chunkIndex', chunkIndex);
                 formData.append('totalChunks', totalChunks); // Add totalChunks parameter
                 formData.append('chunkSize', chunkSize); // single chunk size
+                console.log(formData);
                 debugger
                 $.ajax({
                     url: '/UploadChunk/Upload',
@@ -43,13 +47,24 @@
                         return xhr;
                     },
                     success: function (res) {
-                        
+
                         chunkIndex++;
                         if (chunkIndex < totalChunks) {
                             sendChunk(file.slice(chunkIndex * chunkSize, (chunkIndex + 1) * chunkSize)); // file.slice(StartIndex, EndIndex);
                         } else {
                             alert("File Uploaded Successfully!")
-                            $("a").attr("href", res);
+                            debugger
+                            var token = file.name.split(".");
+                            var extension=token[token.length - 1];
+
+                            if (extension.toLowerCase() == "mp4" || extension.toLowerCase() == "mkv") {
+                                $('#divVideo').attr('hidden', false);
+                                $('#divVideo iframe').attr('src', res);
+                            }
+                            else{
+                                $('#divVideo').attr('hidden', true);
+                                $('#divVideo iframe').attr('src', res);
+                            }
                         }
                     }
                 });
