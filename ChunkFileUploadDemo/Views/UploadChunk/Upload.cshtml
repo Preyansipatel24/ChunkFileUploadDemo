@@ -1,0 +1,67 @@
+﻿
+
+<!-- File upload form -->
+<form id="uploadForm" enctype="multipart/form-data">
+    <input type="file" name="file" />
+    <button type="submit">Upload</button>
+    <br />
+    <a id="uploadedFilePath" href="">Uploaded File</a>
+</form>
+
+<!-- Progress bar to show the upload progress -->
+<div id="progressBar">
+    <div id="progress"></div>
+</div>
+
+@section scripts{
+    <script>
+        // Function to upload a file in chunks
+        function uploadFile(file) {
+            const chunkSize = 1024 * 1024; // 1024 = 1KB // 1024 * 1024 = 1MB
+            const totalChunks = Math.ceil(file.size / chunkSize); // Total No. of Chunks
+            let chunkIndex = 0;
+            // Function to send a chunk of the file to the server
+            function sendChunk(chunk) {
+                const formData = new FormData();
+                formData.append('file', chunk, file.name);
+                formData.append('chunkIndex', chunkIndex);
+                formData.append('totalChunks', totalChunks); // Add totalChunks parameter
+                formData.append('chunkSize', chunkSize); // single chunk size
+                debugger
+                $.ajax({
+                    url: '/UploadChunk/Upload',
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    xhr: function () {
+                        const xhr = new XMLHttpRequest();
+                        xhr.upload.addEventListener('progress', function (event) {
+                            const percentComplete = Math.round(event.loaded / event.total * 100);
+                            $('#progress').width(percentComplete + '%');
+                        }, false);
+                        return xhr;
+                    },
+                    success: function (res) {
+                        
+                        chunkIndex++;
+                        if (chunkIndex < totalChunks) {
+                            sendChunk(file.slice(chunkIndex * chunkSize, (chunkIndex + 1) * chunkSize)); // file.slice(StartIndex, EndIndex);
+                        } else {
+                            alert("File Uploaded Successfully!")
+                            $("a").attr("href", res);
+                        }
+                    }
+                });
+            }
+
+            sendChunk(file.slice(0, chunkSize)); // Start Index = 0, End Index = current chunks size (1MB)
+        }
+
+        // Submit the form when the file is selected
+        $('#uploadForm input[type=file]').on('change', function () {
+            const file = this.files[0];
+            uploadFile(file);
+        });
+    </script>
+}
