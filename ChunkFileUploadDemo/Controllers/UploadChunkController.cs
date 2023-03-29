@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using ChunkFileUploadDemo.Models;
+using Microsoft.AspNetCore.Mvc;
+using System.Net.Mime;
 
 namespace ChunkFileUploadDemo.Controllers
 {
@@ -28,9 +30,9 @@ namespace ChunkFileUploadDemo.Controllers
             {
                 Directory.CreateDirectory(directoryPath);
             }
-            
+
             var filePath = Path.Combine(directoryPath, file.FileName);
-          
+
             if (chunkIndex == 0)
             {
                 // If this is the first chunk, delete any existing file with the same name
@@ -95,7 +97,7 @@ namespace ChunkFileUploadDemo.Controllers
             {
                 // If this is not the last chunk, return a 206 Partial Content response
                 return StatusCode(206);
-                
+
             }
         }
         public string GetRelativeRootPath()
@@ -104,5 +106,177 @@ namespace ChunkFileUploadDemo.Controllers
             string relativeRootPath = _httpContextAccessor.HttpContext.Request.Scheme + "://" + _httpContextAccessor.HttpContext.Request.Host;
             return relativeRootPath;
         }
+
+
+        [HttpGet]
+        public IActionResult FileChunks(string filepath)
+        {
+            int totalChunks = 0;
+            int chunkSize = 1024 * 1024;
+            var filePath = Path.Combine(filepath, "SampleVideo_1280x720_30mb.mp4");
+            GetChunkModel getChunkModel = new GetChunkModel();
+            using (var fileStream = new FileStream(filePath, FileMode.Open))
+            {
+                // Calculate the total number of chunks
+                totalChunks = (int)Math.Ceiling((double)fileStream.Length / chunkSize);
+                getChunkModel.chunkSize = chunkSize;
+                getChunkModel.totalChunks = totalChunks;
+                getChunkModel.filePath = filePath;
+            }
+            return Ok(getChunkModel);
+        }
+
+        [HttpGet]
+        public IActionResult UploadFileInChunks(string filepath, int totalchunks, int chunksize, int chunkIndexs)
+        {
+
+            IFormFile file = null;
+            byte[] bytes = null;
+            int chunkSize = 1024 * 1024; // 1MB chunk size
+            byte[] fileContents = null;
+            var filePath = Path.Combine(filepath, "SampleVideo_1280x720_30mb.mp4");
+            using (var fileStream = new FileStream(filePath, FileMode.Open))
+            {
+                // Calculate the total number of chunks
+                int totalChunks = (int)Math.Ceiling((double)fileStream.Length / chunkSize);
+
+                // Loop through the chunks
+                for (int chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++)
+                {
+                    // Get the start and end index of the current chunk
+                    int startIndex = chunkIndex * chunkSize;
+                    int endIndex = (chunkIndex + 1) * chunkSize - 1;
+
+                    // If this is the last chunk, adjust the end index
+                    if (chunkIndex == totalChunks - 1)
+                    {
+                        endIndex = (int)file.Length - 1;
+                    }
+
+                    // Read the current chunk
+
+                    fileStream.Seek(startIndex, SeekOrigin.Begin);
+                    byte[] buffer = new byte[endIndex - startIndex + 1];
+                    fileStream.ReadAsync(buffer, 0, buffer.Length);
+
+                    // Write the current chunk to the output stream
+
+                    using (var stream = new MemoryStream(buffer))
+                    {
+                        var file1 = new FormFile(stream, 0, buffer.Length, "file", "SampleVideo_1280x720_30mb.mp4")
+                        {
+                            Headers = new HeaderDictionary(),
+                            //ContentType = contentType
+                        };
+
+                        // do something with the file, like save it to disk or process its contents
+                        file = file1;
+                    }
+
+
+                    chunkIndex = chunkIndex;
+                    chunkSize = chunkSize;
+                    totalChunks = totalChunks;
+
+
+
+
+                }
+            }
+
+            return Ok();
+        }
+
+
+        //[HttpGet]
+        //public IActionResult FileChunksreturns(string filepath, int totalchunks, int chunksize, int chunkIndexs)
+        //{
+
+        //    IFormFile file = null;
+        //    byte[] bytes = null;
+        //    int chunkSize = chunksize; // 1MB chunk size
+        //    byte[] fileContents = null;
+        //    var filedata = "";
+        //    var filePath = filepath;
+        //    using (var fileStream = new FileStream(filePath, FileMode.Open))
+        //    {
+        //        // Calculate the total number of chunks
+        //        int totalChunks = (int)Math.Ceiling((double)fileStream.Length / chunkSize);
+
+        //        // Loop through the chunks
+        //        for (int chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++)
+        //        {
+        //            if (chunkIndex <= chunkIndexs)
+        //            {
+        //                // Get the start and end index of the current chunk
+        //                int startIndex = chunkIndex * chunkSize;
+        //                int endIndex = (chunkIndex + 1) * chunkSize - 1;
+
+        //                // If this is the last chunk, adjust the end index
+        //                if (chunkIndex == totalChunks - 1)
+        //                {
+        //                    endIndex = (int)file.Length - 1;
+        //                }
+
+        //                // Read the current chunk
+
+        //                fileStream.Seek(startIndex, SeekOrigin.Begin);
+        //                byte[] buffer = new byte[endIndex - startIndex + 1];
+        //                fileStream.ReadAsync(buffer, 0, buffer.Length);
+
+        //                // Write the current chunk to the output stream
+
+        //                //using (var stream = new MemoryStream(buffer))
+        //                //{
+        //                //    var file1 = new FormFile(stream, 0, buffer.Length, "file", "SampleVideo_1280x720_30mb.mp4")
+        //                //    {
+        //                //        Headers = new HeaderDictionary(),
+        //                //        //ContentType = contentType
+        //                //    };
+
+        //                //    // do something with the file, like save it to disk or process its contents
+        //                //    file = file1;
+        //                //}
+
+
+        //                var result = new FileContentResult(buffer, "application/octet-stream");
+        //                result.EnableRangeProcessing = true;
+        //                result.FileDownloadName = Path.GetFileName(filePath);
+        //                //return result;
+
+        //            }
+        //        }
+
+        //    }
+        //    return Ok();
+        //}
+
+
+        [HttpGet]
+        public IActionResult FileChunksreturns(string filepath, int totalchunks, int chunksize, int chunkIndexs)
+        {
+            int chunkSize = chunksize; // 1MB chunk size
+            var filePath = filepath;
+            var startIndex = chunkIndexs * chunkSize;
+            var endIndex = startIndex + chunkSize - 1;
+            if (endIndex >= new FileInfo(filePath).Length)
+            {
+                endIndex = (int)new FileInfo(filePath).Length - 1;
+            }
+            var bufferLength = endIndex - startIndex + 1;
+            var buffer = new byte[bufferLength];
+
+            using (var fileStream = new FileStream(filePath, FileMode.Open))
+            {
+                fileStream.Seek(startIndex, SeekOrigin.Begin);
+                fileStream.Read(buffer, 0, bufferLength);
+            }
+
+            var fileStreamResult = new FileStreamResult(new MemoryStream(buffer), "application/octet-stream");
+            fileStreamResult.EnableRangeProcessing = true;
+            fileStreamResult.FileDownloadName = Path.GetFileName(filePath);
+            return fileStreamResult;
+        }
+
     }
 }
